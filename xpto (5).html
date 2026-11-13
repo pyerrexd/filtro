@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filtro de Processos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1c2430;--mut:#6b7686;--bd:#dde1e7;--ac:#1f5fbf;--acx:#fff;--hl:#eef3fb}
+@media (prefers-color-scheme:dark){:root{--bg:#14181e;--card:#1c222b;--tx:#e6e9ee;--mut:#97a1b0;--bd:#2e3745;--ac:#5b9bf0;--acx:#0d1520;--hl:#222c3b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px 12px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+input,select{width:100%;padding:7px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx);font:inherit}
+button{padding:8px 14px;border:1px solid var(--ac);background:var(--ac);color:var(--acx);border-radius:6px;cursor:pointer;font:inherit}
+button.sec{background:transparent;color:var(--ac)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--tx);margin:0}
+.chk input{width:auto}
+#info{color:var(--mut);font-size:13px;margin-top:10px}
+.sp{flex:1}
+.more{margin-top:12px;border-top:1px solid var(--bd);padding-top:4px}
+summary.lnk{border:0;background:none;color:var(--ac);padding:8px 0;font-weight:600}
+summary.lnk::before{content:"▸ "}
+.more[open] summary.lnk::before{content:"▾ "}
+#nAtv{color:var(--mut);font-weight:400;margin-left:6px}
+.grp{margin-top:10px}
+.grp h3{margin:0 0 8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);font-weight:600}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:1100px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top;font-size:13px}
+th{color:var(--mut);font-size:12px;cursor:pointer;position:sticky;top:0;background:var(--card);white-space:nowrap}
+tr.r:hover{background:var(--hl);cursor:pointer}
+.det td{background:var(--hl);white-space:pre-wrap}
+details{position:relative}
+summary{padding:7px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);cursor:pointer;list-style:none}
+.ms{position:absolute;z-index:5;left:0;top:100%;margin-top:4px;width:340px;max-width:90vw;max-height:320px;overflow:auto;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.ms .chk{margin:4px 0}
+.msb{display:flex;gap:6px;margin-top:8px}
+.msb button{padding:5px 10px;font-size:12px}
+details.msd summary{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:22px;position:relative}
+details.msd summary::after{content:"▾";position:absolute;right:8px;color:var(--mut)}
+a{color:var(--ac)}
+.num{text-align:right;white-space:nowrap}
+</style>
+</head>
+<body>
+<h1>Filtro de Processos</h1>
+
+<div class="card">
+  <label>Arquivo .txt do relatório (pode selecionar vários)</label>
+  <input type="file" id="file" accept=".txt" multiple>
+  <div id="info0" style="color:var(--mut);margin-top:6px"></div>
+</div>
+
+<div class="card" id="filtros" style="display:none">
+  <div class="grid">
+    <div><label>Busca geral</label><input id="q" placeholder="qualquer texto"></div>
+    <div><label>Tribunal</label><details class="msd" data-k="trib"><summary>Todos</summary><div class="ms"><input class="msq" placeholder="buscar..."><div class="msl"></div><div class="msb"><button type="button" class="sec" data-a="all">Marcar todos</button><button type="button" class="sec" data-a="clr">Limpar</button></div></div></details></div>
+    <div><label>Classe</label><details class="msd" data-k="cls"><summary>Todos</summary><div class="ms"><input class="msq" placeholder="buscar..."><div class="msl"></div><div class="msb"><button type="button" class="sec" data-a="all">Marcar todos</button><button type="button" class="sec" data-a="clr">Limpar</button></div></div></details></div>
+    <div><label>Polo passivo contém</label><input id="pas" placeholder="use ; para vários"></div>
+    <div><label>Polo ativo contém</label><input id="atv" placeholder="use ; para vários"></div>
+  </div>
+
+  <details class="more" id="more">
+    <summary class="lnk">Mais filtros<span id="nAtv"></span></summary>
+
+    <div class="grp"><h3>Processo</h3><div class="grid">
+      <div><label>Classe NÃO contém</label><input id="classeNot" placeholder="use ; para vários"></div>
+      <div><label>Assunto</label><details class="msd" data-k="asu"><summary>Todos</summary><div class="ms"><input class="msq" placeholder="buscar..."><div class="msl"></div><div class="msb"><button type="button" class="sec" data-a="all">Marcar todos</button><button type="button" class="sec" data-a="clr">Limpar</button></div></div></details></div>
+      <div><label>Órgão julgador</label><details class="msd" data-k="org"><summary>Todos</summary><div class="ms"><input class="msq" placeholder="buscar..."><div class="msl"></div><div class="msb"><button type="button" class="sec" data-a="all">Marcar todos</button><button type="button" class="sec" data-a="clr">Limpar</button></div></div></details></div>
+      <div><label>Última movimentação contém</label><input id="mov"></div>
+    </div></div>
+
+    <div class="grp"><h3>Partes e advogados</h3><div class="grid">
+      <div><label>Polo passivo NÃO contém</label><input id="pasNot" placeholder="use ; para vários"></div>
+      <div><label>Polo ativo NÃO contém</label><input id="atvNot" placeholder="use ; para vários"></div>
+      <div><label>Tipo do polo ativo</label><details class="msd" data-k="tpa"><summary>Todos</summary><div class="ms"><input class="msq" placeholder="buscar..."><div class="msl"></div><div class="msb"><button type="button" class="sec" data-a="all">Marcar todos</button><button type="button" class="sec" data-a="clr">Limpar</button></div></div></details></div>
+      <div><label>Advogado (qualquer polo)</label><input id="adv"></div>
+      <div><label>Advogado do polo passivo</label><input id="advP"></div>
+    </div></div>
+
+    <div class="grp"><h3>Valor, datas e perfil</h3><div class="grid">
+      <div><label>Valor mínimo (R$)</label><input id="vmin" type="number"></div>
+      <div><label>Valor máximo (R$)</label><input id="vmax" type="number"></div>
+      <div><label>Início de</label><input id="i1" type="date"></div>
+      <div><label>Início até</label><input id="i2" type="date"></div>
+      <div><label>Últ. movimento de</label><input id="m1" type="date"></div>
+      <div><label>Últ. movimento até</label><input id="m2" type="date"></div>
+      <div><label>Renda mínima (alguma parte)</label><input id="rmin" type="number"></div>
+      <div><label>Idade mínima (alguma parte)</label><input id="amin" type="number"></div>
+    </div></div>
+  </details>
+
+  <div class="bar">
+    <label class="chk"><input type="checkbox" id="tel"> Só com telefone</label>
+    <label class="chk"><input type="checkbox" id="vis"> Só com parte identificada</label>
+    <button id="limpar" class="sec">Limpar filtros</button>
+    <span class="sp"></span>
+    <button id="txt" class="sec">TXT</button>
+    <button id="csv" class="sec">CSV</button>
+    <button id="xlsx">Excel</button>
+  </div>
+  <div id="info"></div>
+</div>
+
+<div class="card wrap" id="res" style="display:none">
+  <table>
+    <thead><tr id="head"></tr></thead>
+    <tbody id="body"></tbody>
+  </table>
+</div>
+
+<script>
+const COLS=[["processo","Processo"],["tribunal","Tribunal"],["classe","Classe"],["assunto","Assunto"],["valor","Valor"],["ini","Início"],["ult","Últ. mov."],["orgao","Órgão julgador"],["ativo","Polo ativo"],["passivo","Polo passivo"],["advs","Advogados"],["ntel","Tel."]];
+let DATA=[],VIEW=[],sortK=null,sortD=1,LIMIT=300,HEADER="";
+const $=id=>document.getElementById(id);
+const norm=s=>(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+const iso=d=>{const m=(d||"").match(/(\d\d)\/(\d\d)\/(\d{4})/);return m?m[3]+"-"+m[2]+"-"+m[1]:""};
+const brl=v=>v==null?"":v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const num=s=>{const m=(s||"").replace(/[^\d,]/g,"").replace(",",".");return m===""?null:parseFloat(m)};
+
+function parse(txt){
+  const out=[];
+  txt.split(/^-{10,}\s*$/m).forEach(b=>{
+    if(!/^PROCESSO:/m.test(b))return;
+    const ix=b.search(/^PROCESSO:/m);
+    if(!HEADER&&ix>0)HEADER=b.slice(0,ix).replace(/\s+$/,"");
+    const r={partes:[],advA:[],advP:[],raw:b.slice(ix).replace(/\s+$/,"")};let pole=null,cur=null,inTel=false;
+    b.split(/\r?\n/).forEach(l=>{
+      let m;
+      if(m=l.match(/^PROCESSO:\s*(.+)/)){r.processo=m[1].trim();return}
+      if(m=l.match(/^LINK:\s*(.+)/)){r.link=m[1].trim();return}
+      if(m=l.match(/^TRIBUNAL:\s*(.+)/)){r.tribunal=m[1].trim();return}
+      if(m=l.match(/^CLASSE:\s*(.+)/)){r.classe=m[1].trim();return}
+      if(m=l.match(/^ASSUNTO:\s*(.*)/)){r.assunto=m[1].trim();return}
+      if(m=l.match(/^VALOR:\s*(.+)/)){r.valor=num(m[1]);return}
+      if(m=l.match(/^DATA INICIO:\s*(.+)/)){r.ini=iso(m[1]);return}
+      if(m=l.match(/^DATA ULTIMO MOVIMENTO:\s*(.+)/)){r.ult=iso(m[1]);return}
+      if(m=l.match(/^ORGAO JULGADOR:\s*(.+)/)){r.orgao=m[1].trim();return}
+      if(m=l.match(/^\s+DESCRICAO:\s*(.*)/)){r.mov=m[1].trim();return}
+      if(/^POLO ATIVO/.test(l)){pole="A";return}
+      if(/^POLO PASSIVO/.test(l)){pole="P";return}
+      if(!pole)return;
+      if(m=l.match(/^- NOME:\s*(.*)/)){cur={polo:pole,nome:m[1].trim(),tels:[]};r.partes.push(cur);inTel=false;return}
+      if(m=l.match(/^- DOC:\s*(.*)/)){if(cur)cur.doc=m[1].trim();return}
+      if(m=l.match(/^- RENDA:\s*(.*)/)){if(cur)cur.renda=num(m[1]);return}
+      if(m=l.match(/^- IDADE:\s*(\d+)/)){if(cur)cur.idade=+m[1];return}
+      if(/^- TELEFONES/.test(l)){inTel=true;return}
+      if(inTel&&(m=l.match(/^\s*\d+\.\s*\S*\s*(.+)/))){cur.tels.push(m[1].trim());return}
+      if(m=l.match(/^- ADVOGADO:\s*(.*)/)){
+        m[1].split(/;\s*(?:Advogado:\s*)?/i).forEach(a=>{a=a.replace(/^Advogado:\s*/i,"").trim();if(a)(pole==="A"?r.advA:r.advP).push(a)});
+      }
+    });
+    const nomes=p=>r.partes.filter(x=>x.polo===p).map(x=>x.nome).join(" | ");
+    r.ativo=nomes("A");r.passivo=nomes("P");
+    r.advs=[...new Set([...r.advA,...r.advP].map(a=>a.replace(/\s*\(CPF.*\)/,"")))].join("; ");
+    r.ntel=r.partes.reduce((s,p)=>s+p.tels.length,0);
+    r.visivel=r.partes.some(p=>!/ocultada/i.test(p.nome));
+    r.passivoN=norm(r.passivo);r.ativoN=norm(r.ativo);r.advPN=norm(r.advP.join(" "));
+    r.tpA=[...new Set(r.partes.filter(p=>p.polo==="A"&&p.doc).map(p=>{const n=p.doc.replace(/\D/g,"").length;return n===14?"pj":n===11?"pf":null}).filter(Boolean))];
+    r.maxRenda=Math.max(-1,...r.partes.map(p=>p.renda==null?-1:p.renda));
+    r.maxIdade=Math.max(-1,...r.partes.map(p=>p.idade==null?-1:p.idade));
+    r.blob=norm([r.processo,r.tribunal,r.classe,r.assunto,r.orgao,r.mov,r.ativo,r.passivo,r.advA.join(" "),r.advP.join(" "),r.partes.map(p=>p.doc).join(" ")].join(" "));
+    out.push(r);
+  });
+  return out;
+}
+
+const TP={pj:"Empresa (CNPJ)",pf:"Pessoa física (CPF)",sem:"Sem documento"};
+const MS={
+  trib:{sel:new Set(),get:d=>[d.tribunal||"(vazio)"]},
+  cls:{sel:new Set(),get:d=>[d.classe||"(vazio)"]},
+  asu:{sel:new Set(),get:d=>[d.assunto||"(vazio)"]},
+  org:{sel:new Set(),get:d=>[d.orgao||"(vazio)"]},
+  tpa:{sel:new Set(),get:d=>d.tpA.length?d.tpA:["sem"],lab:v=>TP[v]}
+};
+const msOk=d=>Object.values(MS).every(m=>!m.sel.size||m.get(d).some(v=>m.sel.has(v)));
+function msRender(k){
+  const m=MS[k],box=document.querySelector(`details[data-k="${k}"]`),q=norm(box.querySelector(".msq").value),cnt={};
+  const lab=v=>m.lab?m.lab(v):v;
+  DATA.forEach(d=>m.get(d).forEach(v=>cnt[v]=(cnt[v]||0)+1));
+  box.querySelector(".msl").innerHTML=Object.keys(cnt).sort((a,b)=>lab(a).localeCompare(lab(b),"pt-BR")).filter(v=>!q||norm(lab(v)).includes(q)).map(v=>`<label class="chk"><input type="checkbox" data-v="${esc(v)}"${m.sel.has(v)?" checked":""}> ${esc(lab(v))} (${cnt[v]})</label>`).join("");
+  box.querySelector("summary").textContent=m.sel.size?(m.sel.size===1?lab([...m.sel][0]):m.sel.size+" selecionados"):"Todos";
+}
+const msReset=()=>Object.keys(MS).forEach(k=>{MS[k].sel.clear();msRender(k)});
+function apply(){
+  const g=id=>$(id).value, n=id=>norm(g(id)), N=id=>g(id)===""?null:+g(id);
+  const q=n("q"),ad=n("adv"),mv=n("mov");
+  const vmin=N("vmin"),vmax=N("vmax"),rmin=N("rmin"),amin=N("amin");
+  const i1=g("i1"),i2=g("i2"),m1=g("m1"),m2=g("m2");
+  const terms=s=>norm(s).split(";").map(x=>x.trim()).filter(Boolean);
+  const cn=terms(g("classeNot")),pas=terms(g("pas")),pasNot=terms(g("pasNot")),atv=terms(g("atv")),atvNot=terms(g("atvNot")),advP=terms(g("advP"));
+  VIEW=DATA.filter(d=>
+    (!q||d.blob.includes(q))&&msOk(d)&&
+    
+    (!cn.length||!cn.some(t=>norm(d.classe).includes(t)))&&
+    (!pas.length||pas.some(t=>d.passivoN.includes(t)))&&(!pasNot.length||!pasNot.some(t=>d.passivoN.includes(t)))&&
+    (!atv.length||atv.some(t=>d.ativoN.includes(t)))&&(!atvNot.length||!atvNot.some(t=>d.ativoN.includes(t)))&&(!advP.length||advP.some(t=>d.advPN.includes(t)))&&
+    (!mv||norm(d.mov).includes(mv))&&
+    (!ad||norm(d.advA.concat(d.advP).join(" ")).includes(ad))&&
+    
+    (vmin==null||(d.valor??-1)>=vmin)&&(vmax==null||(d.valor??Infinity)<=vmax)&&
+    (!i1||d.ini>=i1)&&(!i2||(d.ini&&d.ini<=i2))&&(!m1||d.ult>=m1)&&(!m2||(d.ult&&d.ult<=m2))&&
+    (rmin==null||d.maxRenda>=rmin)&&(amin==null||d.maxIdade>=amin)&&
+    (!$("tel").checked||d.ntel>0)&&(!$("vis").checked||d.visivel));
+  const na=[...document.querySelectorAll("#more input,#more select")].filter(e=>!e.classList.contains("msq")&&e.dataset.v==null&&(e.type==="checkbox"?e.checked:e.value!=="")).length+[...document.querySelectorAll("#more details.msd")].filter(b=>MS[b.dataset.k].sel.size).length;
+  $("nAtv").textContent=na?` (${na} ativo${na>1?"s":""})`:"";
+  if(sortK)VIEW.sort((a,b)=>{const x=a[sortK]??"",y=b[sortK]??"";return (x>y?1:x<y?-1:0)*sortD});
+  render();
+}
+
+const fmtD=s=>s?s.split("-").reverse().join("/"):"";
+const esc=s=>(s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+function render(){
+  $("head").innerHTML=COLS.map(([k,t])=>`<th data-k="${k}">${t}${sortK===k?(sortD>0?" ▲":" ▼"):""}</th>`).join("");
+  $("body").innerHTML=VIEW.slice(0,LIMIT).map((d,i)=>`<tr class="r" data-i="${i}">
+    <td>${d.link?`<a href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.processo)}</a>`:esc(d.processo)}</td>
+    <td>${esc((d.tribunal||"").replace("Tribunal Regional do Trabalho","TRT").replace("Tribunal de Justiça do Estado de","TJ"))}</td>
+    <td>${esc(d.classe)}</td><td>${esc(d.assunto)}</td><td class="num">${brl(d.valor)}</td>
+    <td>${fmtD(d.ini)}</td><td>${fmtD(d.ult)}</td><td>${esc(d.orgao)}</td>
+    <td>${esc(d.ativo)}</td><td>${esc(d.passivo)}</td><td>${esc(d.advs)}</td><td>${d.ntel||""}</td></tr>`).join("");
+  $("info").textContent=`${VIEW.length} de ${DATA.length} processos`+(VIEW.length>LIMIT?` (mostrando ${LIMIT}; exporte para ver todos)`:"");
+}
+
+function detalhe(d){
+  let t="Última movimentação: "+(d.mov||"")+"\n\n";
+  d.partes.forEach(p=>{t+=(p.polo==="A"?"ATIVO":"PASSIVO")+": "+p.nome+(p.doc?"  Doc: "+p.doc:"")+(p.renda!=null?"  Renda: R$ "+p.renda:"")+(p.idade!=null?"  Idade: "+p.idade:"")+(p.tels.length?"\n   Tel: "+p.tels.join(", "):"")+"\n"});
+  t+="\nAdvogados ativo: "+d.advA.join("; ")+"\nAdvogados passivo: "+d.advP.join("; ");
+  return t;
+}
+
+$("body").addEventListener("click",e=>{
+  if(e.target.closest("a"))return;
+  const tr=e.target.closest("tr.r");if(!tr)return;
+  const nx=tr.nextElementSibling;
+  if(nx&&nx.classList.contains("det")){nx.remove();return}
+  const row=document.createElement("tr");row.className="det";
+  row.innerHTML=`<td colspan="${COLS.length}">${esc(detalhe(VIEW[+tr.dataset.i]))}</td>`;
+  tr.after(row);
+});
+$("head").addEventListener("click",e=>{
+  const k=e.target.closest("th")?.dataset.k;if(!k)return;
+  sortD=sortK===k?-sortD:1;sortK=k;apply();
+});
+document.querySelectorAll("#filtros input,#filtros select").forEach(el=>el.addEventListener("input",apply));
+document.querySelectorAll("details.msd").forEach(box=>{
+  const k=box.dataset.k;
+  box.querySelector(".msl").addEventListener("change",e=>{const v=e.target.dataset.v;if(v==null)return;e.target.checked?MS[k].sel.add(v):MS[k].sel.delete(v);msRender(k);apply()});
+  box.querySelector(".msq").addEventListener("input",()=>msRender(k));
+  box.querySelector(".msb").addEventListener("click",e=>{const a=e.target.dataset.a;if(!a)return;
+    if(a==="clr")MS[k].sel.clear();else box.querySelectorAll(".msl input").forEach(i=>MS[k].sel.add(i.dataset.v));
+    msRender(k);apply()});
+});
+document.addEventListener("click",e=>document.querySelectorAll("details.msd[open]").forEach(b=>{if(!b.contains(e.target))b.open=false}));
+$("limpar").onclick=()=>{document.querySelectorAll("#filtros input,#filtros select").forEach(el=>el.type==="checkbox"?el.checked=false:el.value="");msReset();apply()};
+
+function flat(){
+  return VIEW.map(d=>({Processo:d.processo,Link:d.link,Tribunal:d.tribunal,Classe:d.classe,Assunto:d.assunto,Valor:d.valor,
+    "Data início":fmtD(d.ini),"Data últ. mov.":fmtD(d.ult),"Órgão julgador":d.orgao,"Última movimentação":d.mov,
+    "Polo ativo":d.ativo,"Polo passivo":d.passivo,"Advogados ativo":d.advA.join("; "),"Advogados passivo":d.advP.join("; "),
+    "Docs":d.partes.map(p=>p.doc).filter(Boolean).join("; "),
+    "Telefones":d.partes.map(p=>p.tels.join(", ")).filter(Boolean).join(" | ")}));
+}
+function baixar(blob,nome){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=nome;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+$("xlsx").onclick=()=>{
+  if(typeof XLSX==="undefined"){alert("Biblioteca Excel não carregou (sem internet?). Use Exportar CSV.");return}
+  const ws=XLSX.utils.json_to_sheet(flat()),wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Processos");XLSX.writeFile(wb,"processos_filtrados.xlsx");
+};
+$("txt").onclick=()=>{
+  if(!VIEW.length)return;
+  const sep="----------------------------------------------";
+  let h=HEADER||"RELATORIO DETALHADO - CONSULTA OAB\n==============================================";
+  h=/PROCESSOS ENCONTRADOS:/.test(h)?h.replace(/PROCESSOS ENCONTRADOS:\s*\d+/,"PROCESSOS ENCONTRADOS: "+VIEW.length):h+"\nPROCESSOS ENCONTRADOS: "+VIEW.length;
+  const t=h+"\n\n"+VIEW.map(d=>d.raw+"\n"+sep+"\n").join("\n")+"\n";
+  baixar(new Blob([t],{type:"text/plain;charset=utf-8"}),"processos_filtrados.txt");
+};
+$("csv").onclick=()=>{
+  const rows=flat();if(!rows.length)return;const h=Object.keys(rows[0]);
+  const c=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+  const s="\ufeff"+[h.map(c).join(";")].concat(rows.map(r=>h.map(k=>c(r[k])).join(";"))).join("\r\n");
+  baixar(new Blob([s],{type:"text/csv;charset=utf-8"}),"processos_filtrados.csv");
+};
+
+$("file").addEventListener("change",async e=>{
+  DATA=[];
+  for(const f of e.target.files){DATA=DATA.concat(parse(await f.text()))}
+  const seen=new Set();DATA=DATA.filter(d=>!seen.has(d.processo)&&seen.add(d.processo));
+  $("info0").textContent=`${DATA.length} processos carregados.`;
+  ["filtros","res"].forEach(id=>$(id).style.display="block");
+  msReset();apply();
+});
+</script>
+</body>
+</html>
